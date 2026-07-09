@@ -1,0 +1,29 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const figures = await getCollection('figures');
+  return figures.map((figure) => ({
+    params: { id: figure.id },
+    props: { figure }
+  }));
+}
+
+const { figure } = Astro.props;
+const { name, subcategory, bio, achievements, disputed, disputeNote } = figure.data;
+---
+<BaseLayout title={name}>
+  <main class="max-w-2xl mx-auto px-6 py-16">
+    <a href="/" class="text-xs text-mist/50">&larr; back</a>
+    <h1 class="font-display italic text-3xl mt-4">{name}</h1>
+    <p class="text-amber text-sm uppercase tracking-wide mt-1">{subcategory}</p>
+    {disputed && <p class="text-xs text-gold-bright mt-3">Disputed: {disputeNote}</p>}
+    <p class="mt-6 text-mist/80 leading-relaxed">{bio}</p>
+    {achievements.length > 0 && (
+      <ul class="mt-6 list-disc list-inside text-mist/70">
+        {achievements.map((a) => <li>{a}</li>)}
+      </ul>
+    )}
+  </main>
+</BaseLayout>
