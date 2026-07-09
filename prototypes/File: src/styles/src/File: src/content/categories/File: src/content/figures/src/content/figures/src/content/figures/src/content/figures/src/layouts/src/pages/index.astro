@@ -1,0 +1,26 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const category = await getEntry('categories', 'legendary-musicians');
+const figures = (await getCollection('figures')).filter(
+  (f) => f.data.category === 'legendary-musicians'
+);
+---
+<BaseLayout title="Venda Culture Galaxy">
+  <main class="max-w-2xl mx-auto px-6 py-16">
+    <p class="text-xs tracking-widest uppercase text-gold-bright/70">Venda Culture Galaxy</p>
+    <h1 class="font-display italic text-3xl mt-2 mb-1">{category?.data.name ?? 'Legendary Musicians'}</h1>
+    <p class="text-sm text-mist/50 mb-8">{category?.data.tagline}</p>
+    <ul class="space-y-5">
+      {figures.map((figure) => (
+        <li>
+          <a href={`/figures/${figure.id}/`} class="font-display text-lg text-gold hover:text-gold-bright underline underline-offset-4">
+            {figure.data.name}
+          </a>
+          <p class="text-sm text-amber uppercase tracking-wide">{figure.data.subcategory}</p>
+        </li>
+      ))}
+    </ul>
+  </main>
+</BaseLayout>
