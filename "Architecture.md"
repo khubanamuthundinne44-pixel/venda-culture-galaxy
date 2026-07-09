@@ -1,0 +1,28 @@
+# Venda Culture Galaxy Architecture
+*v1 static-first, no backend, accessibility built in from day one*
+## Principles
+**Static-first.** No database, no API server, no user accounts in v1. Content is files in the repo, not rows in a table.
+**Accessibility is a parallel mode, not a retrofit.** The keyboard/screen-reader version is built from the same data, alongside the galaxy, from day one—not bolted on at the end.
+**One flagship category first.** Prove the interaction with placeholder data before any real content goes in.
+**Everything through Git**, editable from GitHub's web editor or any mobile browser. No tool that needs a local machine.
+## Stack
+
+| Layer | Choice | Skip |
+| :--- | :--- | :--- |
+| Framework | Astro | Next.js |
+| 3D layer | Three.js (vanilla) | React Three Fiber |
+| Animation | GSAP | - |
+| Styling | Tailwind CSS | - |
+| Language | JavaScript (v1) | TypeScript (later) |
+| Data | JSON content files, Astro Content Collections | PostgreSQL / Prisma |
+| Images | Repo Astro image optimization; Cloudinary free tier if it outgrows the repo | Supabase Storage |
+| Hosting | Netlify | Vercel |
+| Backend | None | Node/Express, Render |
+
+**Astro over Next.js** — Astro ships zero JS by default and only hydrates the interactive pieces, which here is just the galaxy canvas. Next.js assumes you want a server; you want a museum. Content Collections also double as your data schema, which lines up with "content as files" below, and it deploys to Netlify as static output — nothing new on the hosting side.
+**Vanilla Three.js over React Three Fiber** — R3F wraps Three.js in a React reconciler. For hand-tuned shader/particle work (the nebula, the starfield), that's an extra layer to fight, especially without a full IDE to debug in. Direct Three.js is easier to build and reason about one scene at a time.
+**GSAP** — built for exactly this animation language: timelines, easing, sequencing a camera move into a UI fade into a reveal. Hand-rolled `requestAnimationFrame` chains get messy fast.
+**JS now, not TypeScript** — TypeScript's real value is the editor tooling (inline errors, autocomplete), which a phone browser won't give you well. The safety net matters more once the data shape has stabilized — add types in Phase 2.
+*Note: This project doesn't need Render. That's for TrustGuard's Flask backend. This is static content — GitHub + Netlify is the whole pipeline, one less moving part than your other project.*
+## Data model
+Every entity is a JSON file, checked against an Astro content schema. No database — Git *is* the database, and every change is a reviewable commit.
