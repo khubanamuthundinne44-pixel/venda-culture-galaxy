@@ -70,7 +70,7 @@
 
   var nodes = [
     { id:'m1', name:'[ Musician Name ]', role:'Traditional Instrumentalist', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
-    { id:'m2', name:'[ Musician Name ]', role:'Artist children', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
+    { id:'m2', name:'[ Musician Name ]', role:'Ceremonial Ensemble Leader', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
     { id:'m3', name:'[ Musician Name ]', role:'Vocalist and Composer', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
     { id:'m4', name:'[ Musician Name ]', role:'Modern Fusion Artist', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' }
   ];
@@ -279,10 +279,13 @@
     n._group=g;
     n._rotSpeed = 0.06+Math.random()*0.05;
 
-    var curve=new THREE.LineCurve3(new THREE.Vector3(0,0,0), n._targetPos);
-    var tubeGeo=new THREE.TubeGeometry(curve, 2, 0.045, 6, false);
+    var lineGeo=new THREE.BufferGeometry();
+    var linePos=new Float32Array([0,0,0, n._targetPos.x,n._targetPos.y,n._targetPos.z]);
+    var lineT=new Float32Array([0,1]);
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos,3));
+    lineGeo.setAttribute('aT', new THREE.BufferAttribute(lineT,1));
     var col=hexToRgb(tone.base);
-    var tubeMat=new THREE.ShaderMaterial({
+    var lineMat=new THREE.ShaderMaterial({
       uniforms:{
         uProgress:{value:0},
         uTime:{value:0},
@@ -290,9 +293,10 @@
         uColor:{value:new THREE.Vector3(col.r/255,col.g/255,col.b/255)}
       },
       vertexShader:[
-        'varying vec2 vUv;',
+        'attribute float aT;',
+        'varying float vT;',
         'void main(){',
-        '  vUv = uv;',
+        '  vT = aT;',
         '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
         '}'
       ].join('\n'),
@@ -301,21 +305,21 @@
         'uniform float uTime;',
         'uniform float uPhase;',
         'uniform vec3 uColor;',
-        'varying vec2 vUv;',
+        'varying float vT;',
         'void main(){',
-        '  float drawn = step(vUv.x, uProgress);',
+        '  float drawn = step(vT, uProgress);',
         '  float cyclePos = fract(uTime*0.05 + uPhase);',
         '  float active = smoothstep(0.0,0.015,cyclePos) * smoothstep(0.16,0.14,cyclePos);',
         '  float travel = clamp(cyclePos/0.15, 0.0, 1.0);',
-        '  float dist = abs(vUv.x - travel);',
+        '  float dist = abs(vT - travel);',
         '  float pulse = active * smoothstep(0.09,0.0,dist) * 0.75;',
-        '  float alpha = drawn * (0.22 + pulse);',
+        '  float alpha = drawn * (0.28 + pulse);',
         '  gl_FragColor = vec4(uColor, alpha);',
         '}'
       ].join('\n'),
       transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
     });
-    n._connection = new THREE.Mesh(tubeGeo, tubeMat);
+    n._connection = new THREE.Line(lineGeo, lineMat);
     scene.add(n._connection);
   });
 
@@ -404,9 +408,4 @@
     var d=DUR(1.7);
     gsap.to(camTarget, { x:n._group.position.x, y:n._group.position.y, z:n._group.position.z, duration:d, ease:'power4.out' });
     gsap.to(camState, { radius:7, duration:d, ease:'power4.out' });
-    gsap.to(camera, { fov:42, duration:d, ease:'power4.out', onUpdate:function(){ camera.updateProjectionMatrix(); } });
-  }
-
-  function closePanel(){
-    document.getElementById('panel').classList.remove('open');
-    g
+    gsap.to(camera, { 
