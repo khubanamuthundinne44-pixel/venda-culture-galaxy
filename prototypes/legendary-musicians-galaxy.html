@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Legendary Musicians — Venda Culture Galaxy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#050710;
+    --gold:#C9A66B;
+    --gold-bright:#EBD9AE;
+    --amber:#8C6A3E;
+    --mist:#E7E4DD;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;overflow:hidden;background:var(--void);height:100%;width:100%;}
+  body{font-family:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif;}
+  #canvas-container{position:fixed;inset:0;}
+  canvas{display:block;touch-action:none;}
+
+  .hud{position:fixed;top:0;left:0;right:0;padding:22px 22px 0;pointer-events:none;z-index:10;}
+  .eyebrow{font-size:0.62rem;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(231,228,221,0.42);margin:0;}
+  .eyebrow strong{color:var(--gold-bright);font-weight:800;}
+  .hint{font-size:0.68rem;color:rgba(231,228,221,0.34);margin:6px 0 0;letter-spacing:0.02em;}
+
+  .node-label{position:absolute;font-family:'Fraunces',Georgia,serif;font-size:0.78rem;font-weight:500;font-style:normal;letter-spacing:0.015em;color:var(--mist);pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,0.9);transform:translate(-50%,16px);white-space:nowrap;opacity:0;transition:opacity 0.5s;padding:3px 10px;background:rgba(5,7,16,0.38);border-radius:20px;backdrop-filter:blur(2px);}
+
+  .panel{position:fixed;left:50%;bottom:0;transform:translate(-50%,100%);width:min(440px,92vw);max-height:64vh;overflow-y:auto;background:linear-gradient(180deg, rgba(15,18,30,0.95), rgba(5,7,16,0.98));border:1px solid rgba(201,166,107,0.22);border-radius:22px 22px 0 0;padding:26px 24px 30px;box-shadow:0 -30px 70px rgba(201,166,107,0.06);z-index:20;backdrop-filter:blur(14px);transition:transform 0.5s cubic-bezier(0.16,1,0.3,1);}
+  .panel.open{transform:translate(-50%,0);}
+  .portrait-frame{width:76px;height:76px;border-radius:50%;border:1px solid rgba(201,166,107,0.45);background:radial-gradient(circle at 32% 28%, rgba(235,217,174,0.22), rgba(10,14,27,0.75));margin-bottom:16px;box-shadow:0 0 26px rgba(201,166,107,0.14), inset 0 0 14px rgba(0,0,0,0.4);}
+  .panel .tag{display:inline-block;font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold-bright);background:rgba(201,166,107,0.12);padding:4px 10px;border-radius:20px;margin-bottom:12px;}
+  .panel h2{font-family:'Fraunces',Georgia,serif;color:var(--mist);margin:0 0 4px;font-size:1.5rem;font-weight:600;font-style:normal;}
+  .panel .role{color:var(--amber);font-size:0.76rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:16px;}
+  .panel .bio{color:rgba(231,228,221,0.8);font-size:0.9rem;line-height:1.6;margin-bottom:18px;}
+  .panel .placeholder-note{color:rgba(231,228,221,0.38);font-size:0.72rem;font-style:italic;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;}
+
+  .back-btn{position:fixed;top:22px;left:20px;z-index:30;background:rgba(231,228,221,0.06);border:1px solid rgba(231,228,221,0.16);color:var(--mist);border-radius:20px;padding:9px 16px;font-family:'Manrope',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.02em;opacity:0;pointer-events:none;transition:opacity 0.3s, background 0.2s;cursor:pointer;}
+  .back-btn.show{opacity:1;pointer-events:auto;}
+  .back-btn:hover{background:rgba(231,228,221,0.12);}
+  .back-btn:focus-visible{outline:2px solid var(--gold-bright);outline-offset:2px;}
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div class="hud">
+  <p class="eyebrow">Venda Culture Galaxy · <strong>Legendary Musicians</strong></p>
+  <p class="hint" id="hint">drag to rotate · pinch or scroll to zoom · tap to begin</p>
+</div>
+<button class="back-btn" id="backBtn">← back to galaxy</button>
+<div id="labels"></div>
+<div class="panel" id="panel">
+  <div class="portrait-frame"></div>
+  <span class="tag">Placeholder</span>
+  <h2 id="panelName">—</h2>
+  <div class="role" id="panelRole">—</div>
+  <div class="bio" id="panelBio">—</div>
+  <div class="placeholder-note">Placeholder profile — real portraits and sourced content come in Phase 3.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(function(){
+  var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function hexToRgb(hex){ return { r:(hex>>16)&255, g:(hex>>8)&255, b:hex&255 }; }
+
+  var nodes = [
+    { id:'m1', name:'[ Musician Name ]', role:'Traditional Instrumentalist', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
+    { id:'m2', name:'[ Musician Name ]', role:'Ceremonial Ensemble Leader', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
+    { id:'m3', name:'[ Musician Name ]', role:'Vocalist and Composer', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' },
+    { id:'m4', name:'[ Musician Name ]', role:'Modern Fusion Artist', bio:'Placeholder biography. Real content, verified sources, dates, and achievements, gets added in Phase 3.' }
+  ];
+
+  var container = document.getElementById('canvas-container');
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 3000);
+  var renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x050710, 1);
+  container.appendChild(renderer.domElement);
+
+  var ambientLight = new THREE.AmbientLight(0x2a3050, 1.1);
+  var keyLight = new THREE.DirectionalLight(0xFFEBC7, 1.4);
+  keyLight.position.set(30,40,20);
+  scene.add(ambientLight, keyLight);
+
+  function glowTexture(){
+    var c=document.createElement('canvas'); c.width=c.height=128;
+    var ctx=c.getContext('2d');
+    var g=ctx.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,'rgba(255,255,255,1)');
+    g.addColorStop(0.35,'rgba(255,255,255,0.5)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+    return new THREE.CanvasTexture(c);
+  }
+  var glowTex = glowTexture();
+  function makeGlow(size,color,opacity){
+    var mat=new THREE.SpriteMaterial({ map:glowTex, color:color, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false, opacity:opacity===undefined?1:opacity });
+    var s=new THREE.Sprite(mat); s.scale.set(size,size,1); return s;
+  }
+
+  function makePlanetTexture(baseHex, shadeHex, seed){
+    var w=192,h=96;
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d');
+    var img=ctx.createImageData(w,h);
+    var data=img.data;
+    var base=hexToRgb(baseHex), shade=hexToRgb(shadeHex);
+    for(var y=0;y<h;y++){
+      for(var x=0;x<w;x++){
+        var idx=(y*w+x)*4;
+        var u=x/w, v=y/h;
+        var n = 0.5+0.5*Math.sin((u*7+seed)*Math.PI*2);
+        n += 0.5+0.5*Math.sin((v*4+u*2.3+seed*1.6)*Math.PI*2);
+        n = n/2 + (Math.random()-0.5)*0.10;
+        n = Math.max(0,Math.min(1,n));
+        data[idx]=base.r+(shade.r-base.r)*n;
+        data[idx+1]=base.g+(shade.g-base.g)*n;
+        data[idx+2]=base.b+(shade.b-base.b)*n;
+        data[idx+3]=255;
+      }
+    }
+    ctx.putImageData(img,0,0);
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  function makeStarField(count, spread, baseSize, colorHex, opacityMax){
+    var positions=new Float32Array(count*3);
+    var phases=new Float32Array(count);
+    var sizes=new Float32Array(count);
+    for(var i=0;i<count;i++){
+      var r=spread*(0.25+0.75*Math.random());
+      var th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+      positions[i*3]=r*Math.sin(ph)*Math.cos(th);
+      positions[i*3+1]=r*Math.sin(ph)*Math.sin(th);
+      positions[i*3+2]=r*Math.cos(ph);
+      phases[i]=Math.random();
+      sizes[i]=baseSize*(0.5+Math.random()*(Math.random()<0.08?3.2:1.0));
+    }
+    var geo=new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(phases,1));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes,1));
+    var col=hexToRgb(colorHex);
+    var mat=new THREE.ShaderMaterial({
+      uniforms:{ uTime:{value:0}, uColor:{value:new THREE.Vector3(col.r/255,col.g/255,col.b/255)}, uOpacity:{value:opacityMax} },
+      vertexShader:[
+        'attribute float aPhase;',
+        'attribute float aSize;',
+        'uniform float uTime;',
+        'varying float vTwinkle;',
+        'void main(){',
+        '  vTwinkle = 0.5 + 0.5*sin(uTime*1.6 + aPhase*6.2831853);',
+        '  vec4 mv = modelViewMatrix * vec4(position,1.0);',
+        '  gl_PointSize = aSize * (240.0/-mv.z);',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n'),
+      fragmentShader:[
+        'uniform vec3 uColor;',
+        'uniform float uOpacity;',
+        'varying float vTwinkle;',
+        'void main(){',
+        '  float d = length(gl_PointCoord - vec2(0.5));',
+        '  float a = smoothstep(0.5,0.05,d) * uOpacity * (0.55+0.45*vTwinkle);',
+        '  gl_FragColor = vec4(uColor, a);',
+        '}'
+      ].join('\n'),
+      transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+    });
+    return new THREE.Points(geo, mat);
+  }
+  var starsFar = makeStarField(2200, 850, 1.4, 0xD9CFC3, 0.65);
+  var starsNear = makeStarField(650, 320, 2.2, 0xFFF6EA, 0.85);
+  scene.add(starsFar, starsNear);
+
+  function milkyWayTexture(){
+    var w=512,h=256;
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d');
+    var img=ctx.createImageData(w,h);
+    var data=img.data;
+    for(var y=0;y<h;y++){
+      var v=y/h;
+      var d=Math.abs(v-0.5)*2;
+      var bandAlpha=Math.max(0,1-d*d*2.4);
+      for(var x=0;x<w;x++){
+        var idx=(y*w+x)*4;
+        if(bandAlpha<=0){ data[idx+3]=0; continue; }
+        var u=x/w;
+        var clump=0.5+0.5*Math.sin(u*Math.PI*14 + Math.sin(u*Math.PI*6)*2);
+        var n=Math.random();
+        var a=bandAlpha*(0.10+0.42*clump)*(0.3+0.6*n);
+        var bright=n>0.99;
+        if(bright) a=Math.min(1,a*5);
+        data[idx]=222;
+        data[idx+1]=bright?214:203;
+        data[idx+2]=bright?196:178;
+        data[idx+3]=Math.round(Math.min(255,a*255));
+      }
+    }
+    ctx.putImageData(img,0,0);
+    var tex=new THREE.CanvasTexture(c);
+    tex.wrapS=THREE.RepeatWrapping;
+    return tex;
+  }
+  var mwTex = milkyWayTexture();
+  var mwMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(950,950,440,64,1,true),
+    new THREE.MeshBasicMaterial({ map:mwTex, side:THREE.BackSide, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending })
+  );
+  mwMesh.renderOrder=-1;
+  var mwSpin=new THREE.Group(); mwSpin.add(mwMesh);
+  var mwTilt=new THREE.Group(); mwTilt.rotation.x=1.15; mwTilt.rotation.z=0.35; mwTilt.add(mwSpin);
+  scene.add(mwTilt);
+
+  [
+    { size:16, color:0x7C89B8, opacity:0.09, squash:0.42 },
+    { size:11, color:0xC9A66B, opacity:0.07, squash:0.6 },
+    { size:20, color:0x5E6A94, opacity:0.06, squash:0.32 },
+    { size:13, color:0xB2A182, opacity:0.06, squash:0.5 }
+  ].forEach(function(cfg){
+    var s = makeGlow(cfg.size, cfg.color, cfg.opacity);
+    s.scale.y *= cfg.squash;
+    var a = Math.random()*Math.PI*2, r=360+Math.random()*280;
+    s.position.set(Math.cos(a)*r, (Math.random()-0.5)*180, Math.sin(a)*r);
+    s.material.rotation = Math.random()*Math.PI;
+    scene.add(s);
+  });
+
+  var dustMotes=[];
+  for(var di=0; di<34; di++){
+    var spr = makeGlow(0.5+Math.random()*0.8, 0xE7E4DD, 0.14+Math.random()*0.14);
+    var base = new THREE.Vector3((Math.random()-0.5)*100,(Math.random()-0.5)*55,(Math.random()-0.5)*100);
+    spr.position.copy(base);
+    scene.add(spr);
+    dustMotes.push({ sprite:spr, base:base, phase:Math.random()*Math.PI*2, speed:0.04+Math.random()*0.07, amp:1.4+Math.random()*2.6 });
+  }
+
+  var centerGroup = new THREE.Group();
+  scene.add(centerGroup);
+  var centerTex = makePlanetTexture(0xC9A66B, 0x362613, 0.4);
+  var centerCore = new THREE.Mesh(
+    new THREE.SphereGeometry(1.9,48,48),
+    new THREE.MeshStandardMaterial({ map:centerTex, roughness:0.55, metalness:0.12, emissive:0x2a1f10, emissiveIntensity:0.25 })
+  );
+  centerGroup.add(centerCore);
+  centerGroup.add(makeGlow(5.2, 0xC9A66B, 0.5));
+
+  var planetTones=[
+    { base:0xC9A66B, shade:0x4A3B22 },
+    { base:0xE0D3B0, shade:0x5C5138 },
+    { base:0xB89468, shade:0x3E3120 },
+    { base:0xD8C39A, shade:0x544726 }
+  ];
+  var radius = 34;
+  nodes.forEach(function(n,i){
+    var tone = planetTones[i % planetTones.length];
+    var angle=(i/nodes.length)*Math.PI*2;
+    var nodeRadius = radius*(0.88+Math.random()*0.24);
+    n._targetPos = new THREE.Vector3(Math.cos(angle)*nodeRadius, Math.sin(angle*0.7)*7.5, Math.sin(angle)*nodeRadius);
+
+    var g=new THREE.Group();
+    var core=new THREE.Mesh(
+      new THREE.SphereGeometry(1.3,32,32),
+      new THREE.MeshStandardMaterial({ map:makePlanetTexture(tone.base, tone.shade, i*1.7+0.3), roughness:0.6, metalness:0.08, emissive:tone.shade, emissiveIntensity:0.12 })
+    );
+    g.add(core);
+    g.add(makeGlow(3.8, tone.base, 0.38));
+    scene.add(g);
+    n._group=g;
+    n._rotSpeed = 0.06+Math.random()*0.05;
+
+    var lineGeo=new THREE.BufferGeometry();
+    var linePos=new Float32Array([0,0,0, n._targetPos.x,n._targetPos.y,n._targetPos.z]);
+    var lineT=new Float32Array([0,1]);
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos,3));
+    lineGeo.setAttribute('aT', new THREE.BufferAttribute(lineT,1));
+    var col=hexToRgb(tone.base);
+    var lineMat=new THREE.ShaderMaterial({
+      uniforms:{
+        uProgress:{value:0},
+        uTime:{value:0},
+        uPhase:{value:(i/nodes.length)+Math.random()*0.08},
+        uColor:{value:new THREE.Vector3(col.r/255,col.g/255,col.b/255)}
+      },
+      vertexShader:[
+        'attribute float aT;',
+        'varying float vT;',
+        'void main(){',
+        '  vT = aT;',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
+        '}'
+      ].join('\n'),
+      fragmentShader:[
+        'uniform float uProgress;',
+        'uniform float uTime;',
+        'uniform float uPhase;',
+        'uniform vec3 uColor;',
+        'varying float vT;',
+        'void main(){',
+        '  float drawn = step(vT, uProgress);',
+        '  float cyclePos = fract(uTime*0.05 + uPhase);',
+        '  float active = smoothstep(0.0,0.015,cyclePos) * smoothstep(0.16,0.14,cyclePos);',
+        '  float travel = clamp(cyclePos/0.15, 0.0, 1.0);',
+        '  float dist = abs(vT - travel);',
+        '  float pulse = active * smoothstep(0.09,0.0,dist) * 0.75;',
+        '  float alpha = drawn * (0.28 + pulse);',
+        '  gl_FragColor = vec4(uColor, alpha);',
+        '}'
+      ].join('\n'),
+      transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+    });
+    n._connection = new THREE.Line(lineGeo, lineMat);
+    scene.add(n._connection);
+  });
+
+  var camState = { radius:32, theta:0.9, phi:1.15 };
+  var camTarget = { x:0, y:0, z:0 };
+  var _tv = new THREE.Vector3();
+  function updateCamera(){
+    _tv.set(camTarget.x, camTarget.y, camTarget.z);
+    camera.position.x=_tv.x+camState.radius*Math.sin(camState.phi)*Math.cos(camState.theta);
+    camera.position.y=_tv.y+camState.radius*Math.cos(camState.phi);
+    camera.position.z=_tv.z+camState.radius*Math.sin(camState.phi)*Math.sin(camState.theta);
+    camera.lookAt(_tv);
+  }
+  updateCamera();
+
+  var dragging=false,lastX=0,lastY=0,moved=false,pinchDist=null;
+  function onDown(x,y){ dragging=true; moved=false; lastX=x; lastY=y; }
+  function onMove(x,y){
+    if(!dragging) return;
+    var dx=x-lastX, dy=y-lastY;
+    if(Math.abs(dx)>2||Math.abs(dy)>2) moved=true;
+    camState.theta -= dx*0.005;
+    camState.phi = Math.max(0.35, Math.min(Math.PI-0.35, camState.phi - dy*0.005));
+    lastX=x; lastY=y;
+  }
+  function onZoom(d){ camState.radius = Math.max(5, Math.min(170, camState.radius+d)); }
+  function touchDist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+
+  var el=renderer.domElement;
+  el.addEventListener('mousedown', function(e){ onDown(e.clientX,e.clientY); });
+  window.addEventListener('mousemove', function(e){ onMove(e.clientX,e.clientY); });
+  window.addEventListener('mouseup', function(){ dragging=false; });
+  el.addEventListener('wheel', function(e){ e.preventDefault(); onZoom(e.deltaY*0.05); }, { passive:false });
+  el.addEventListener('touchstart', function(e){
+    if(e.touches.length===1) onDown(e.touches[0].clientX, e.touches[0].clientY);
+    else if(e.touches.length===2) pinchDist=touchDist(e.touches);
+  }, { passive:true });
+  el.addEventListener('touchmove', function(e){
+    if(e.touches.length===1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+    else if(e.touches.length===2){ var d=touchDist(e.touches); onZoom((pinchDist-d)*0.12); pinchDist=d; }
+  }, { passive:true });
+  el.addEventListener('touchend', function(e){
+    if(e.changedTouches.length===1 && !moved) onTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    dragging=false; pinchDist=null;
+  });
+  el.addEventListener('click', function(e){ if(!moved) onTap(e.clientX,e.clientY); });
+
+  var expanded=false, selected=null;
+  var raycaster=new THREE.Raycaster(), mouse=new THREE.Vector2();
+  var DUR=function(d){ return reducedMotion?Math.min(d,0.35):d; };
+
+  function expandGalaxy(){
+    if(expanded) return;
+    expanded=true;
+    document.getElementById('hint').textContent='tap a planet to open';
+    document.getElementById('backBtn').classList.add('show');
+    nodes.forEach(function(n,i){
+      var d1=DUR(1.6), dl=reducedMotion?0:i*0.1;
+      gsap.to(n._group.position, { x:n._targetPos.x, y:n._targetPos.y, z:n._targetPos.z, duration:d1, delay:dl, ease:'power3.out' });
+      gsap.to(n._connection.material.uniforms.uProgress, { value:1, duration:d1, delay:dl, ease:'power3.out' });
+    });
+    gsap.to(camState, { radius:100, duration:DUR(1.5), ease:'power2.inOut' });
+  }
+
+  function collapseGalaxy(){
+    nodes.forEach(function(n){
+      gsap.to(n._group.position, { x:0,y:0,z:0, duration:DUR(0.8), ease:'power2.in' });
+      gsap.to(n._connection.material.uniforms.uProgress, { value:0, duration:DUR(0.5), ease:'power2.in' });
+    });
+    gsap.to(camState, { radius:32, theta:0.9, phi:1.15, duration:DUR(1), ease:'power2.inOut' });
+    gsap.to(camera, { fov:55, duration:DUR(0.6), onUpdate:function(){ camera.updateProjectionMatrix(); } });
+    expanded=false; selected=null;
+    document.getElementById('panel').classList.remove('open');
+    document.getElementById('backBtn').classList.remove('show');
+    document.getElementById('hint').textContent='drag to rotate · pinch or scroll to zoom · tap to begin';
+  }
+
+  function openProfile(n){
+    selected=n;
+    document.getElementById('panelName').textContent=n.name;
+    document.getElementById('panelRole').textContent=n.role;
+    document.getElementById('panelBio').textContent=n.bio;
+    document.getElementById('panel').classList.add('open');
+    document.getElementById('backBtn').classList.add('show');
+    document.getElementById('hint').textContent='';
+    var d=DUR(1.7);
+    gsap.to(camTarget, { x:n._group.position.x, y:n._group.position.y, z:n._group.position.z, duration:d, ease:'power4.out' });
+    gsap.to(camState, { radius:7, duration:d, ease:'power4.out' });
+    gsap.to(camera, { 
