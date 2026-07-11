@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #050710;
+  --color-gold: #C9A66B;
+  --color-gold-bright: #EBD9AE;
+  --color-amber: #8C6A3E;
+  --color-mist: #E7E4DD;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+}
